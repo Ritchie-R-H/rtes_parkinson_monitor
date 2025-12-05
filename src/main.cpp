@@ -28,8 +28,8 @@ ImuSensor imu(PB_11, PB_10);
 
 // TODO: Tune Sampling Rate and Window Size
 // Sampling parameters: 50 Hz, 3-second window
-static constexpr float   SAMPLE_RATE_HZ   = 50.0f;
-static constexpr auto    SAMPLE_PERIOD    = 20ms;
+static constexpr float   SAMPLE_RATE_HZ   = 52.0f;  // 52Hz
+static constexpr auto    SAMPLE_PERIOD    = 19ms;
 static constexpr float   WINDOW_SECONDS   = 3.0f;
 static constexpr size_t  WINDOW_SAMPLES   = (size_t)(SAMPLE_RATE_HZ * WINDOW_SECONDS);
 
@@ -125,6 +125,12 @@ void process_window()
 
     printf("analysis: f_dom=%d(centiHz) tremor=%d dysk=%d fog=%d\r\n",
            f_dom_centi, tremor_lvl, dysk_lvl, fog_lvl);
+    
+    // Visualize the curves using teleplot
+    printf(">tremor:%d\n", tremor_lvl);
+    printf(">dysk:%d\n", dysk_lvl);
+    printf(">fog:%d\n", fog_lvl);
+    printf(">fdom:%0.2f\n", res.dominant_freq);
 
     // Update BLE characteristics (3 independent characteristics)
     if (g_parkinson_service) {
