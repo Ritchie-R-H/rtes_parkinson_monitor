@@ -41,6 +41,7 @@ bool   g_window_ready = false;
 
 // LED indicator
 DigitalOut led(LED1);
+DigitalOut led2(LED2);
 
 // Signal processor (internally does FFT + tremor/dyskinesia/FOG analysis)
 SignalProcessor g_signal_proc(SAMPLE_RATE_HZ, WINDOW_SAMPLES);
@@ -94,7 +95,7 @@ void sample_imu()
     }
 
     // LED toggle indicates sampling activity
-    led = !led;
+    // led = !led;
 }
 
 // -------- Window analysis + BLE update (runs in EventQueue context) --------
@@ -131,6 +132,22 @@ void process_window()
     printf(">dysk:%d\n", dysk_lvl);
     printf(">fog:%d\n", fog_lvl);
     printf(">fdom:%0.2f\n", res.dominant_freq);
+
+    const int TH_FOG = 40;
+    
+    if (fog_lvl >= TH_FOG) {  // FOG -> both LEDs off 
+        led = 0;
+        led2 = 0;
+    } else if (tremor_lvl >= dysk_lvl) {  // Tremor -> turn on LED2
+        led = 0;
+        led2 = 1;
+    } else if (dysk_lvl > tremor_lvl) {  // Dysk -> turn on LED1
+        led = 1;
+        led2 = 0;
+    } else {
+        led = 0;
+        led2 = 0;
+    }
 
     // Update BLE characteristics (3 independent characteristics)
     if (g_parkinson_service) {
