@@ -39,9 +39,12 @@ float g_gyro_mag[WINDOW_SAMPLES];
 size_t g_sample_idx = 0;
 bool   g_window_ready = false;
 
-// LED indicator
-DigitalOut led(LED1);
-DigitalOut led2(LED2);
+
+// ———————————— LEDs for indication ————————————
+DigitalOut ledTremor(LED1);
+DigitalOut ledDysk(LED2);
+DigitalOut ledNone(LED3);
+
 
 // Signal processor (internally does FFT + tremor/dyskinesia/FOG analysis)
 SignalProcessor g_signal_proc(SAMPLE_RATE_HZ, WINDOW_SAMPLES);
@@ -133,20 +136,27 @@ void process_window()
     printf(">fog:%d\n", fog_lvl);
     printf(">fdom:%0.2f\n", res.dominant_freq);
 
-    const int TH_FOG = 40;
+    // Detection threshold for tremor/dyskinesia
+    const int threshold = 40;  
+
+    // Light LEDs based on detection
+    ledTremor = ledDysk = ledNone = 0;
     
-    if (fog_lvl >= TH_FOG) {  // FOG -> both LEDs off 
-        led = 0;
-        led2 = 0;
-    } else if (tremor_lvl >= dysk_lvl) {  // Tremor -> turn on LED2
-        led = 0;
-        led2 = 1;
-    } else if (dysk_lvl > tremor_lvl) {  // Dysk -> turn on LED1
-        led = 1;
-        led2 = 0;
+    if (tremor_lvl > dysk_lvl && tremor_lvl > threshold) {
+        ledTremor = 1; // Tremor detected
+        ledDysk = 0;
+        ledNone = 0;
+        printf("Tremor detected at %.1f Hz (mag: %d)\r\n", res.dominant_freq, tremor_lvl);
+    } else if (dysk_lvl > tremor_lvl && dysk_lvl > threshold) {
+        ledDysk = 1; // Dyskinesia detected
+        ledTremor = 0;
+        ledNone = 0;
+        printf("Dyskinesia detected at %.1f Hz (mag: %d)\r\n", res.dominant_freq, dysk_lvl);
     } else {
-        led = 0;
-        led2 = 0;
+        ledNone = 1; // No movement disorder detected
+        ledTremor = 0;
+        ledDysk = 0;
+        printf("No movement disorder detected (T: %d, D: %d)\r\n", tremor_lvl, dysk_lvl);
     }
 
     // Update BLE characteristics (3 independent characteristics)
@@ -217,11 +227,14 @@ int main()
 {
     printf("Stage D: IMU + SignalProcessor + BLE starting...\r\n");
 
+    // Initialize all LEDs off
+    ledTremor = ledDysk = ledNone = 0;
+
     // Initialize IMU
     if (!imu.init()) {
         printf("IMU init failed! Halt.\r\n");
         while (true) {
-            led = !led;
+            ledNone = !ledNone;
             ThisThread::sleep_for(200ms);
         }
     } else {
